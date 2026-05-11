@@ -45,3 +45,25 @@ export_json: true           # Export extracted data to JSON
 #   registrationNo: "202001012345"
 #   phone: "+603-1234 5678"
 #   email: "admin@company.com"
+
+# ==========================================
+# AI Configuration (OpenRouter)
+# ==========================================
+# Set OPENROUTER_API_KEY in .env file
+
+# AI Model Selection (see https://openrouter.ai/models)
+ai_model: "openai/gpt-4o-mini"          # Fast & cheap, good for extraction
+ai_fallback_model: "google/gemini-2.0-flash-001"  # Fallback if primary fails
+
+# Alternative models (uncomment to use):
+# ai_model: "openai/gpt-4o"             # Most accurate, higher cost
+# ai_model: "anthropic/claude-3.5-sonnet" # Great at structured data
+# ai_model: "google/gemini-2.0-flash-001" # Fast and cheap
+# ai_model: "meta-llama/llama-3.1-70b-instruct" # Open source, good quality
+
+# AI Behavior
+ai_temperature: 0.1                      # Low = more deterministic/accurate
+ai_max_tokens: 4096                      # Max response length
+ai_confidence_threshold: 0.7             # Min confidence to auto-fill a field
+ai_enable_page_analysis: true            # Analyze page DOM before filling
+ai_enable_error_recovery: true           # Ask AI for fix when errors occur
