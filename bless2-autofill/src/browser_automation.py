@@ -581,22 +581,451 @@ class BLESS2AutoFill:
 
     def navigate_to_application(self, application_type: str = "new"):
         """
-        Navigate to the application form.
+        Navigate to the application form using the correct BLESS2 flow:
+        Dashboard → My License → Active License(s) → My Tray → Edit Form
+        
+        Based on official BLESS2 manual flow.
         
         Args:
             application_type: 'new' for new application, 'renewal' for renewal
         """
         try:
-            if application_type == "new":
-                url = f"{self.config.base_url}/application/new"
-            else:
-                url = f"{self.config.base_url}/application/renewal"
+            logger.info("Navigating BLESS2 flow to application form...")
+            
+            # Step 1: Go to My Tray (where pending applications are)
+            self._navigate_to_my_tray()
+            
+            # Step 2: Check if there's already an application in tray
+            # If yes, click edit icon to open the form
+            form_opened = self._open_form_from_tray()
+            
+            if not form_opened:
+                # Need to add a new license first
+                logger.info("No pending application in tray. Starting new application flow...")
+                self._add_new_license(application_type)
                 
-            self.driver.get(url)
-            time.sleep(2)
-            logger.info("Navigated to {} application", application_type)
+            logger.info("Successfully navigated to application form")
+            
         except Exception as e:
             logger.error("Navigation failed: {}", str(e))
+            self._take_screenshot("navigation_error")
+
+    def _navigate_to_my_tray(self):
+        """
+        Navigate to My License → My Tray.
+        This is where pending/incomplete applications are listed.
+        """
+        try:
+            # Try direct URL first
+            tray_url = self.config.base_url.rstrip('/') + "/myLicense/myTray"
+            self.driver.get(tray_url)
+            time.sleep(2)
+            
+            # Verify we're on My Tray page
+            if "myTray" in self.driver.current_url or "my-tray" in self.driver.current_url:
+                logger.info("Navigated to My Tray via direct URL")
+                return
+            
+            # Fallback: Navigate via menu clicks
+            logger.info("Trying menu navigation to My Tray...")
+            
+            # Click "My License" menu
+            my_license_selectors = [
+                "//a[contains(text(), 'My License')]",
+                "//span[contains(text(), 'My License')]",
+                "//li[contains(@class, 'menu')]//a[contains(text(), 'License')]",
+                "a[href*='myLicense']",
+            ]
+            
+            menu_clicked = False
+            for selector in my_license_selectors:
+                try:
+                    if selector.startswith("//"):
+                        el = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        el = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    el.click()
+                    time.sleep(1)
+                    menu_clicked = True
+                    break
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            if menu_clicked:
+                # Click "My Tray" submenu
+                tray_selectors = [
+                    "//a[contains(text(), 'My Tray')]",
+                    "//span[contains(text(), 'My Tray')]",
+                    "a[href*='myTray']",
+                    "a[href*='my-tray']",
+                ]
+                
+                for selector in tray_selectors:
+                    try:
+                        if selector.startswith("//"):
+                            el = self.driver.find_element(By.XPATH, selector)
+                        else:
+                            el = self.driver.find_element(By.CSS_SELECTOR, selector)
+                        el.click()
+                        time.sleep(2)
+                        logger.info("Navigated to My Tray via menu")
+                        return
+                    except (NoSuchElementException, ElementNotInteractableException):
+                        continue
+            
+            logger.warning("Could not navigate to My Tray via menu")
+            
+        except Exception as e:
+            logger.error("Error navigating to My Tray: {}", str(e))
+
+    def _open_form_from_tray(self) -> bool:
+        """
+        Open an existing application form from My Tray.
+        Looks for the edit icon (pencil icon) to open the form.
+        
+        Returns:
+            True if a form was successfully opened
+        """
+        try:
+            time.sleep(1)
+            
+            # Look for edit icon in the tray list
+            edit_selectors = [
+                "i.fa-edit",
+                "i.fa-pencil",
+                "a[title='Edit']",
+                "a[title='Kemaskini']",
+                ".edit-icon",
+                "i.glyphicon-edit",
+                "//a[contains(@title, 'Edit')]",
+                "//i[contains(@class, 'edit')]",
+                "//i[contains(@class, 'pencil')]",
+                "//td//a[contains(@href, 'edit')]",
+            ]
+            
+            for selector in edit_selectors:
+                try:
+                    if selector.startswith("//"):
+                        el = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        el = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    
+                    if el and el.is_displayed():
+                        el.click()
+                        time.sleep(3)
+                        logger.info("Opened form from My Tray (edit icon)")
+                        return True
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            # Check if form status shows INCOMPLETE (clickable row)
+            try:
+                incomplete_rows = self.driver.find_elements(
+                    By.XPATH, "//tr[contains(., 'INCOMPLETE')]//a | //tr[contains(., 'INCOMPLETE')]//i"
+                )
+                if incomplete_rows:
+                    incomplete_rows[0].click()
+                    time.sleep(3)
+                    logger.info("Opened INCOMPLETE form from tray")
+                    return True
+            except Exception:
+                pass
+            
+            logger.info("No existing application found in My Tray")
+            return False
+            
+        except Exception as e:
+            logger.warning("Error opening form from tray: {}", str(e))
+            return False
+
+    def _add_new_license(self, license_type: str = "new"):
+        """
+        Add a new license to My Tray via the Active License(s) flow.
+        Flow: Active License(s) → Add New License → Search → Select → Add to Tray
+        
+        Args:
+            license_type: 'new' or 'renewal'
+        """
+        try:
+            # Navigate to Active Licenses
+            active_url = self.config.base_url.rstrip('/') + "/myLicense/activeLicense"
+            self.driver.get(active_url)
+            time.sleep(2)
+            
+            # Click "Add New License" button
+            add_new_selectors = [
+                "//button[contains(text(), 'Add New')]",
+                "//a[contains(text(), 'Add New')]",
+                "//button[contains(text(), 'Tambah')]",
+                "button[id*='addNew']",
+                "a[id*='addNew']",
+                ".btn-add-license",
+            ]
+            
+            for selector in add_new_selectors:
+                try:
+                    if selector.startswith("//"):
+                        el = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        el = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    el.click()
+                    time.sleep(2)
+                    logger.info("Clicked 'Add New License'")
+                    break
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            # The rest of the flow (select company, search keyword, select license)
+            # will be handled by AI or manual user interaction
+            logger.info("Add new license flow initiated. Waiting for user/AI to complete selection...")
+            self._take_screenshot("add_new_license_screen")
+            
+        except Exception as e:
+            logger.error("Error adding new license: {}", str(e))
+
+    def navigate_to_section(self, section_id: str):
+        """
+        Navigate to a specific form section (Bahagian).
+        BLESS2 forms are divided into sections that may be tabs or sequential pages.
+        
+        Args:
+            section_id: Section identifier like 'bahagian_a', 'bahagian_b', etc.
+        """
+        try:
+            section_labels = {
+                "bahagian_a": ["BAHAGIAN A", "Section A", "Maklumat Permohonan", "Butir-Butir Pemohon"],
+                "bahagian_b": ["BAHAGIAN B", "Section B", "Maklumat Barang", "Butir-Butir Permit"],
+                "bahagian_c": ["BAHAGIAN C", "Section C", "Maklumat Syarikat Pembekal"],
+                "bahagian_d": ["BAHAGIAN D", "Section D", "Butir-Butir Lesen"],
+                "bahagian_e": ["BAHAGIAN E", "Section E", "Senarai Semak", "Document Checklist"],
+                "bahagian_f": ["BAHAGIAN F", "Section F", "Dokumen Sokongan"],
+                "perakuan": ["PERAKUAN", "Declaration"],
+            }
+            
+            labels = section_labels.get(section_id, [])
+            
+            for label in labels:
+                # Try clicking tab/link with that label
+                try:
+                    el = self.driver.find_element(
+                        By.XPATH, f"//a[contains(text(), '{label}')] | //li[contains(text(), '{label}')] | //div[contains(@class, 'tab')][contains(text(), '{label}')]"
+                    )
+                    if el and el.is_displayed():
+                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+                        el.click()
+                        time.sleep(1)
+                        logger.info("Navigated to section: {}", section_id)
+                        return True
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            # Sections might be all on one page (scroll to section)
+            for label in labels:
+                try:
+                    heading = self.driver.find_element(
+                        By.XPATH, f"//*[contains(text(), '{label}')]"
+                    )
+                    if heading:
+                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'start'});", heading)
+                        time.sleep(0.5)
+                        logger.info("Scrolled to section: {}", section_id)
+                        return True
+                except NoSuchElementException:
+                    continue
+            
+            logger.warning("Could not navigate to section: {}", section_id)
+            return False
+            
+        except Exception as e:
+            logger.warning("Error navigating to section {}: {}", section_id, str(e))
+            return False
+
+    def fill_bahagian_a(self, data: Dict[str, Any]):
+        """
+        Fill BAHAGIAN A - Applicant/Company Details.
+        These are the core company fields that come from PDF extraction.
+        
+        Args:
+            data: Dictionary with field values from extracted PDF data
+        """
+        logger.info("Filling BAHAGIAN A - Butir-Butir Pemohon/Syarikat...")
+        
+        self.navigate_to_section("bahagian_a")
+        
+        # Negeri (State) - dropdown
+        if data.get("state"):
+            self._fill_select_by_selectors(
+                ["select[id*='negeri']", "select[name*='negeri']", "select[id*='state']"],
+                data["state"]
+            )
+        
+        # Cawangan Agensi Pemprosesan - dropdown (user-specific, may skip)
+        if data.get("cawangan"):
+            self._fill_select_by_selectors(
+                ["select[id*='cawangan']", "select[name*='cawangan']", "select[id*='branch']"],
+                data["cawangan"]
+            )
+        
+        # Bentuk Perniagaan (Business Type) - dropdown
+        if data.get("company_type"):
+            self._fill_select_by_selectors(
+                ["select[id*='bentuk']", "select[name*='bentuk']", "select[id*='businessType']"],
+                data["company_type"]
+            )
+        
+        # Aktiviti Perniagaan (Business Activity)
+        if data.get("business_nature"):
+            self._fill_text_by_selectors(
+                ["input[id*='aktiviti']", "input[name*='aktiviti']", "textarea[id*='aktiviti']", "input[id*='activity']"],
+                data["business_nature"]
+            )
+        
+        # No. Telefon Pejabat (Office Phone)
+        if data.get("phone"):
+            self._fill_text_by_selectors(
+                ["input[id*='noTel']", "input[name*='noTel']", "input[id*='phone']", "input[id*='telefon']"],
+                data["phone"]
+            )
+        
+        # No. Telefon Bimbit (Mobile)
+        if data.get("mobile") or data.get("phone"):
+            self._fill_text_by_selectors(
+                ["input[id*='bimbit']", "input[name*='bimbit']", "input[id*='mobile']", "input[id*='hp']"],
+                data.get("mobile", data.get("phone", ""))
+            )
+        
+        # No. Faks
+        if data.get("fax"):
+            self._fill_text_by_selectors(
+                ["input[id*='faks']", "input[name*='faks']", "input[id*='fax']"],
+                data["fax"]
+            )
+        
+        # Email
+        if data.get("email"):
+            self._fill_text_by_selectors(
+                ["input[id*='email']", "input[name*='email']", "input[type='email']"],
+                data["email"]
+            )
+        
+        logger.info("BAHAGIAN A completed")
+
+    def submit_application(self):
+        """
+        Submit the application after all sections are filled.
+        Flow: Tick PERAKUAN checkbox → Click Submit button.
+        """
+        try:
+            logger.info("Submitting application...")
+            
+            # Navigate to PERAKUAN section
+            self.navigate_to_section("perakuan")
+            time.sleep(1)
+            
+            # Tick the declaration checkbox
+            perakuan_selectors = [
+                "input[type='checkbox'][id*='perakuan']",
+                "input[type='checkbox'][id*='declare']",
+                "input[type='checkbox'][name*='perakuan']",
+                "input[type='checkbox'][name*='declare']",
+                "input[type='checkbox'][name*='agree']",
+            ]
+            
+            for selector in perakuan_selectors:
+                try:
+                    checkbox = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if not checkbox.is_selected():
+                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkbox)
+                        checkbox.click()
+                        logger.info("PERAKUAN checkbox ticked")
+                        break
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            time.sleep(1)
+            
+            # Click Submit button
+            self._submit_form()
+            
+            logger.info("Application submitted successfully!")
+            self._take_screenshot("submission_success")
+            
+        except Exception as e:
+            logger.error("Submission failed: {}", str(e))
+            self._take_screenshot("submission_error")
+
+    def save_draft(self):
+        """Save the current form as draft without submitting."""
+        try:
+            save_selectors = [
+                "button:contains('Simpan')",
+                "button:contains('Save')",
+                "button[id*='save']",
+                "//button[contains(text(), 'Simpan')]",
+                "//button[contains(text(), 'Save')]",
+            ]
+            
+            for selector in save_selectors:
+                try:
+                    if selector.startswith("//"):
+                        el = self.driver.find_element(By.XPATH, selector)
+                    else:
+                        el = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    el.click()
+                    time.sleep(2)
+                    logger.info("Form saved as draft")
+                    return True
+                except (NoSuchElementException, ElementNotInteractableException):
+                    continue
+            
+            logger.warning("Save button not found")
+            return False
+            
+        except Exception as e:
+            logger.error("Error saving draft: {}", str(e))
+            return False
+
+    def _fill_text_by_selectors(self, selectors: List[str], value: str) -> bool:
+        """Helper: Fill text field trying multiple selectors."""
+        element = self._find_element_by_selectors(selectors)
+        if element:
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+            time.sleep(0.2)
+            element.clear()
+            element.send_keys(Keys.CONTROL + "a")
+            element.send_keys(Keys.DELETE)
+            element.send_keys(value)
+            return True
+        return False
+
+    def _fill_select_by_selectors(self, selectors: List[str], value: str) -> bool:
+        """Helper: Fill select/dropdown trying multiple selectors."""
+        element = self._find_element_by_selectors(selectors)
+        if element:
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+            time.sleep(0.2)
+            try:
+                select = Select(element)
+                # Try by value
+                try:
+                    select.select_by_value(value)
+                    return True
+                except NoSuchElementException:
+                    pass
+                # Try by visible text
+                try:
+                    select.select_by_visible_text(value)
+                    return True
+                except NoSuchElementException:
+                    pass
+                # Try partial match
+                for option in select.options:
+                    if value.upper() in option.text.upper():
+                        select.select_by_visible_text(option.text)
+                        return True
+            except Exception:
+                pass
+        return False
 
     def get_current_page_fields(self) -> List[Dict[str, str]]:
         """
