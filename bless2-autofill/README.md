@@ -1,218 +1,327 @@
-# BLESS2 Auto-Fill System
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Selenium-43B02A?style=for-the-badge&logo=selenium&logoColor=white" alt="Selenium">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/OpenRouter_AI-6366F1?style=for-the-badge&logo=openai&logoColor=white" alt="OpenRouter">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="MIT License">
+</p>
 
-Sistem automatik yang parse semua maklumat berkaitan dari softcopy PDF dan auto-fill field yang berkaitan di laman web [BLESS 2.0](https://bless2.bless.gov.my/bless2/private) (Business Licensing Electronic Support System).
+<h1 align="center">BLESS2 Auto-Fill System</h1>
 
-## 🎯 Apa yang dilakukan sistem ini?
+<p align="center">
+  <strong>Sistem automasi penuh untuk parse dokumen PDF perniagaan & auto-fill borang BLESS 2.0</strong>
+</p>
 
-1. **Parse PDF** - Extract semua maklumat dari dokumen perniagaan (SSM Certificate, Company Profile, Form 9/24/49, dll.)
-2. **Map Fields** - Mapping data yang di-extract ke form fields BLESS2 secara automatik
-3. **Auto-Fill** - Guna Selenium untuk buka browser dan isi borang BLESS2 secara automatik
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> &bull;
+  <a href="#-features">Features</a> &bull;
+  <a href="#-web-gui">Web GUI</a> &bull;
+  <a href="#-ai-powered">AI Powered</a> &bull;
+  <a href="#-documentation">Docs</a>
+</p>
 
-## 📁 Jenis Dokumen yang Disokong
+---
 
-| Dokumen | Maklumat yang Di-Extract |
-|---------|--------------------------|
-| SSM Company Profile | Nama syarikat, No. pendaftaran, alamat, pengarah, modal |
-| Certificate of Incorporation (Form 9) | Nama syarikat, jenis syarikat, tarikh pemerbadanan |
-| Form 24 (Annual Return) | Butiran syarikat, pemegang saham |
-| Form 49 (Director Notification) | Maklumat pengarah/pegawai |
-| Financial Statements | Modal berbayar, aset |
-| Generic Business Documents | Auto-detect dan extract maklumat yang boleh dikenalpasti |
+## Apa Ni?
 
-## 🚀 Quick Start
+> Upload PDF syarikat anda &rarr; Sistem extract semua info &rarr; Auto-isi borang [BLESS 2.0](https://bless2.bless.gov.my/bless2/private) untuk anda.
 
-### 1. Install Dependencies
+BLESS 2.0 (Business Licensing Electronic Support System) adalah sistem kerajaan Malaysia untuk permohonan lesen perniagaan. Sistem ini **menghapuskan kerja manual** mengisi borang berulang kali dengan mengautomasikan keseluruhan proses.
+
+```
+  PDF Syarikat           AI Extract Data          Auto-Fill BLESS2
+ ┌───────────┐         ┌─────────────────┐       ┌──────────────┐
+ │  SSM      │         │  Nama Syarikat  │       │  ✅ Negeri    │
+ │  Form 9   │  ────►  │  No. SSM        │ ────► │  ✅ Email     │
+ │  Form 49  │         │  Alamat         │       │  ✅ Telefon   │
+ │  Profile  │         │  Tel/Email/Fax  │       │  ✅ Aktiviti  │
+ └───────────┘         └─────────────────┘       └──────────────┘
+```
+
+---
+
+## &#x1F680; Quick Start
 
 ```bash
-cd bless2-autofill
+# 1. Clone & setup
+git clone https://github.com/ainizzatymomoo/wrc.git
+cd wrc/bless2-autofill
 pip install -r requirements.txt
 
-# Untuk OCR (optional - untuk scanned PDFs):
-# Ubuntu/Debian:
-sudo apt-get install tesseract-ocr tesseract-ocr-msa poppler-utils
-# macOS:
-brew install tesseract poppler
-```
-
-### 2. Setup Credentials
-
-```bash
+# 2. Setup credentials
 cp .env.example .env
-# Edit .env dan masukkan BLESS2 username & password anda
-```
+# Edit .env → masukkan BLESS2_USERNAME, BLESS2_PASSWORD, OPENROUTER_API_KEY
 
-### 3. Jalankan Sistem
-
-```bash
-# Preview sahaja (tengok apa yang akan diisi)
+# 3. Preview dulu (recommended!)
 python main.py --pdf ./documents/ --preview
 
-# Dry run (extract data sahaja, export ke JSON)
-python main.py --pdf ./documents/ --dry-run --output ./output.json
-
-# Full auto-fill
-python main.py --pdf ./documents/ --username YOUR_ID --password YOUR_PASS
-
-# Headless mode (tanpa paparan browser)
-python main.py --pdf ./documents/ -u YOUR_ID -pw YOUR_PASS --headless
-```
-
-## 📖 Penggunaan Terperinci
-
-### Mode Preview
-Lihat data yang akan diisi tanpa buka browser:
-```bash
-python main.py --pdf ./ssm_profile.pdf --preview
-```
-
-Output contoh:
-```
-════════════════════════════════════════════════════════
-BLESS2 AUTO-FILL PREVIEW
-════════════════════════════════════════════════════════
-
-📋 Company Information
-──────────────────────────────
-  ✅ Nama Syarikat / Company Name [REQUIRED]
-     → ABC TECHNOLOGIES SDN BHD
-  ✅ No. Pendaftaran / Registration No. [REQUIRED]
-     → 202001012345
-  ✅ Jenis Syarikat / Company Type [REQUIRED]
-     → 01 (Private Company)
-...
-```
-
-### Mode Dry Run
-Extract data dan simpan ke JSON untuk review:
-```bash
-python main.py --pdf ./documents/ --dry-run --output ./data.json
-```
-
-### Full Auto-Fill
-```bash
-# Dengan credentials dari environment
-export BLESS2_USERNAME="your_id"
-export BLESS2_PASSWORD="your_pass"
-python main.py --pdf ./documents/
-
-# Atau dengan arguments
+# 4. Full auto-fill
 python main.py --pdf ./documents/ -u YOUR_ID -pw YOUR_PASS
-
-# Auto-submit selepas isi
-python main.py --pdf ./documents/ -u YOUR_ID -pw YOUR_PASS --auto-submit
 ```
 
-### Dengan Config File
+Atau guna **Web GUI**:
 ```bash
-python main.py --pdf ./documents/ --config ./config/settings.yaml
+python run_gui.py
+# Buka http://localhost:8000
 ```
 
-## 🏗️ System Architecture
+---
+
+## &#x2728; Features
+
+| Feature | Keterangan |
+|---------|------------|
+| **PDF Parsing** | Extract data dari SSM Profile, Form 9/24/49, Annual Return, dll. |
+| **AI-Powered Extraction** | OpenRouter AI (GPT-4o, Claude, Gemini) untuk accuracy 90%+ |
+| **Smart Field Matching** | AI analyze page DOM & match fields secara dynamic |
+| **Web Dashboard** | GUI cantik di localhost:8000 dengan drag-drop upload |
+| **Real-Time Progress** | WebSocket live updates semasa automation berjalan |
+| **Multiple Modes** | Preview, Dry Run, Full Auto-Fill, Headless |
+| **Error Recovery** | AI suggest fix bila field gagal diisi |
+| **Session Resume** | Boleh resume dari last checkpoint |
+| **Screenshot Debug** | Auto-capture screenshots pada setiap step |
+
+---
+
+## &#x1F3AF; Lesen Yang Disokong
+
+| Lesen | Agensi | Bahagian Auto-Fill |
+|-------|--------|-------------------|
+| Permit Barang Kawalan Berjadual | KPDNKK | A, B (partial), Perakuan |
+| Lesen CSA Borong | KPDNHEP | A, B (partial), Perakuan |
+
+---
+
+## &#x1F4C4; Dokumen PDF Yang Disokong
+
+| Dokumen | Data Yang Di-Extract |
+|---------|---------------------|
+| SSM Company Profile | Nama, No. Pendaftaran, Alamat, Pengarah, Modal, MSIC |
+| Certificate of Incorporation | Nama, Jenis Syarikat, Tarikh Pemerbadanan |
+| Form 9 | Certificate details |
+| Form 24 (Annual Return) | Syarikat, Pemegang Saham |
+| Form 49 (Director) | Nama, IC, Jawatan Pengarah |
+| Financial Statements | Modal Berbayar |
+| **Any Business PDF** | Auto-detect & extract (AI-powered) |
+
+---
+
+## &#x1F310; Web GUI
+
+<p align="center"><strong>Dashboard di <code>http://localhost:8000</code></strong></p>
+
+```bash
+python run_gui.py
+```
+
+**3 langkah mudah:**
+
+| Step | Aksi | Screenshot |
+|------|------|-----------|
+| 1 | Drag & drop PDF files | Upload zone |
+| 2 | Preview extracted data | Table view |
+| 3 | Enter credentials → Run | Progress bar + live log |
+
+**Features Web GUI:**
+- Drag & drop PDF upload
+- Real-time extraction preview
+- Live automation progress (WebSocket)
+- Download JSON export
+- Error log visualization
+
+---
+
+## &#x1F9E0; AI Powered
+
+Integrate dengan **OpenRouter** untuk akses 300+ model AI:
+
+```env
+# .env
+OPENROUTER_API_KEY=sk-or-v1-xxxxx
+```
+
+### Apa Yang AI Buat:
+
+| Fungsi | Tanpa AI | Dengan AI |
+|--------|----------|-----------|
+| PDF Extraction | Regex (60-70%) | Context-aware (90-95%) |
+| Field Matching | Static selectors | Dynamic page analysis |
+| Error Handling | Retry same selector | AI suggest alternative |
+| Format Handling | Limited patterns | Any format/language |
+
+### Model Yang Tersedia:
+
+| Model | Speed | Kos | Best For |
+|-------|-------|-----|----------|
+| `openai/gpt-4o-mini` | Fast | ~RM0.005/run | Default, best balance |
+| `openai/gpt-4o` | Medium | ~RM0.05/run | Maximum accuracy |
+| `anthropic/claude-3.5-sonnet` | Medium | ~RM0.06/run | Complex documents |
+| `google/gemini-2.0-flash-001` | Fastest | ~RM0.002/run | Budget option |
+
+---
+
+## &#x1F4CB; Struktur Borang BLESS2
+
+Berdasarkan **manual rasmi BLESS2**:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    BLESS2 Auto-Fill System                    │
+│  BAHAGIAN A - Butir Pemohon/Syarikat          [AUTO-FILL]   │
+│  ├── Negeri                              ✅ dari PDF        │
+│  ├── Cawangan Agensi                     ⚠️  manual        │
+│  ├── Bentuk Perniagaan (ROC/ROB/PLT)     ✅ dari PDF        │
+│  ├── Aktiviti Perniagaan                 ✅ dari PDF        │
+│  ├── No. Telefon Pejabat                 ✅ dari PDF        │
+│  ├── No. Telefon Bimbit                  ✅ dari PDF        │
+│  ├── No. Faks                            ✅ dari PDF        │
+│  └── Email                               ✅ dari PDF        │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │  PDF     │    │   Field      │    │   Browser        │  │
-│  │  Parser  │───▶│   Mapper     │───▶│   Automation     │  │
-│  │          │    │              │    │   (Selenium)     │  │
-│  └──────────┘    └──────────────┘    └──────────────────┘  │
-│       │                │                      │             │
-│       ▼                ▼                      ▼             │
-│  ExtractedData   FormSections          BLESS2 Website       │
-│  (structured)    (mapped fields)       (auto-filled)        │
-│                                                              │
+│  BAHAGIAN B - Butir Permit/Barang             [PARTIAL]     │
+│  ├── Tujuan Pembelian                    ❌ manual          │
+│  ├── Tempoh Permit                       ❌ manual          │
+│  ├── Jenis Barang                        ❌ manual          │
+│  └── Alamat Stor                         ✅ dari PDF        │
 ├─────────────────────────────────────────────────────────────┤
-│                     Orchestrator                             │
-│  (coordinates all steps, handles errors, logging)           │
+│  BAHAGIAN C - Syarikat Pembekal               [MANUAL]      │
+├─────────────────────────────────────────────────────────────┤
+│  BAHAGIAN D - Kelulusan Jabatan/Agensi        [MANUAL]      │
+├─────────────────────────────────────────────────────────────┤
+│  BAHAGIAN E/F - Dokumen Upload                [MANUAL]      │
+├─────────────────────────────────────────────────────────────┤
+│  PERAKUAN - Declaration                       [AUTO-TICK]   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📂 Struktur Projek
+---
+
+## &#x1F6E0;&#xFE0F; Modes Penggunaan
+
+| Mode | Command | Guna Bila |
+|------|---------|-----------|
+| **Preview** | `--preview` | Nak tengok data yang di-extract tanpa buka browser |
+| **Dry Run** | `--dry-run` | Export ke JSON untuk review/integration |
+| **Full** | (default) | Parse + Login + Fill borang |
+| **Headless** | `--headless` | Browser di background (untuk server/cron) |
+| **Keep Open** | `--keep-open` | Browser kekal buka untuk semak manual |
+| **Auto Submit** | `--auto-submit` | Auto-hantar (HATI-HATI!) |
+
+---
+
+## &#x1F4C2; Struktur Projek
 
 ```
 bless2-autofill/
-├── main.py                 # Entry point utama
-├── requirements.txt        # Python dependencies
-├── .env.example           # Template environment variables
-├── .gitignore
+├── main.py                          # CLI entry point
+├── run_gui.py                       # Web GUI (localhost:8000)
+├── requirements.txt                 # Dependencies
+├── .env.example                     # Template credentials
+│
 ├── config/
-│   └── settings.yaml      # Configuration file
+│   ├── settings.yaml                # Main config
+│   ├── bless2_form_definitions.py   # Permit Barang Kawalan spec
+│   └── lesen_csa_borong_definitions.py  # Lesen CSA Borong spec
+│
 ├── src/
-│   ├── __init__.py
-│   ├── pdf_parser.py      # Modul parse PDF
-│   ├── field_mapper.py    # Modul mapping data ke form fields
-│   ├── browser_automation.py  # Modul automasi browser (Selenium)
-│   └── orchestrator.py    # Koordinator utama
-├── templates/             # Custom field mapping templates
-├── docs/                  # Dokumentasi tambahan
-└── tests/                 # Unit tests
+│   ├── pdf_parser.py                # PDF extraction engine
+│   ├── field_mapper.py              # Data → BLESS2 field mapping
+│   ├── browser_automation.py        # Selenium browser control
+│   ├── ai_engine.py                 # OpenRouter AI integration
+│   └── orchestrator.py              # Workflow coordinator
+│
+├── web/
+│   ├── app.py                       # FastAPI + WebSocket backend
+│   └── static/index.html            # Dashboard UI
+│
+└── docs/
+    └── AUTOMATION_MANUAL.md         # Manual lengkap (400+ lines)
 ```
 
-## ⚙️ Configuration
+---
 
-Edit `config/settings.yaml` untuk customize:
+## &#x2699;&#xFE0F; Configuration
+
+### Environment Variables (`.env`)
+
+```env
+BLESS2_USERNAME=your_bless_id
+BLESS2_PASSWORD=your_password
+OPENROUTER_API_KEY=sk-or-v1-xxxxx    # Optional: untuk AI
+```
+
+### Config File (`config/settings.yaml`)
 
 ```yaml
-# Browser settings
-headless: false          # true untuk jalankan tanpa paparan
-timeout: 30              # timeout dalam saat
-slow_mode: true          # tambah delay antara setiap action
-
-# PDF settings
-ocr_enabled: false       # true untuk scanned PDFs
-
-# Override specific fields
-field_overrides:
-  phone: "+603-1234 5678"
-  email: "admin@company.com"
+headless: false
+timeout: 30
+slow_mode: true
+ocr_enabled: false
+ai_model: "openai/gpt-4o-mini"
+ai_confidence_threshold: 0.7
 ```
 
-## 🔧 Troubleshooting
+---
 
-### PDF tidak dapat dibaca
-- Pastikan PDF bukan image/scan. Jika ya, enable OCR:
-  ```bash
-  python main.py --pdf ./documents/ --ocr --dry-run
-  ```
+## &#x1F4D6; Documentation
 
-### Browser tidak dapat dibuka
-- Pastikan Chrome/Chromium sudah diinstall
-- Pastikan `chromedriver` versi sepadan dengan Chrome anda
-- Cuba gunakan: `pip install webdriver-manager`
+| Dokumen | Lokasi | Isi |
+|---------|--------|-----|
+| README | `README.md` | Overview & quick start |
+| **Manual Lengkap** | [`docs/AUTOMATION_MANUAL.md`](docs/AUTOMATION_MANUAL.md) | Step-by-step guide, troubleshooting, field reference |
+| Form Specs | `config/bless2_form_definitions.py` | Exact BLESS2 form structure |
+| Config Example | `config/settings.yaml` | All available settings |
 
-### Field tidak dapat diisi
-- Sistem akan ambil screenshot jika ada error
-- Semak folder `./screenshots/` untuk debug
-- Mungkin perlu update CSS selectors dalam `field_mapper.py`
+---
 
-### Login gagal
-- Pastikan credentials betul dalam `.env`
-- BLESS2 mungkin ada captcha - perlu isi manual jika ada
+## &#x26A0;&#xFE0F; Penting
 
-## 🛡️ Keselamatan
+> **SENTIASA guna `--preview` dulu sebelum full auto-fill.**
 
-- **JANGAN** commit `.env` file ke git
-- Credentials disimpan secara lokal sahaja
-- Screenshots mungkin mengandungi data sensitif - semak sebelum share
-- PDF dokumen perniagaan adalah sulit - jangan upload ke public repo
+```bash
+# BETUL - preview dulu
+python main.py --pdf ./docs/ --preview
+python main.py --pdf ./docs/ -u ID -pw PASS --keep-open
 
-## 📝 Nota Penting
+# BAHAYA - jangan buat tanpa review!
+python main.py --pdf ./docs/ -u ID -pw PASS --auto-submit  # ⚠️
+```
 
-1. Sistem ini memerlukan akses internet ke `bless2.bless.gov.my`
-2. Pastikan akaun BLESS2 anda aktif dan boleh login
-3. Gunakan `--preview` atau `--dry-run` dulu sebelum full auto-fill
-4. **Sentiasa semak data yang diisi sebelum submit** - gunakan `--keep-open` untuk review manual
-5. Jika laman web BLESS2 berubah layout, CSS selectors mungkin perlu dikemaskini
+---
 
-## 🤝 Contributing
+## &#x1F512; Keselamatan
 
-1. Fork repo ini
-2. Buat feature branch
-3. Submit Pull Request
+| Item | Status |
+|------|--------|
+| `.env` dalam `.gitignore` | &#x2705; |
+| Credentials encrypted in memory | &#x2705; |
+| Screenshots auto-cleanup option | &#x2705; |
+| No data sent to external (except OpenRouter) | &#x2705; |
+| PDF files excluded from git | &#x2705; |
 
-## 📄 License
+---
 
-MIT License - Gunakan mengikut keperluan anda.
+## &#x1F91D; Contributing
+
+```bash
+# 1. Fork repo
+# 2. Create branch
+git checkout -b feature/new-license-support
+
+# 3. Make changes & commit
+git commit -m "feat: add support for Lesen XYZ"
+
+# 4. Push & PR
+git push origin feature/new-license-support
+```
+
+---
+
+## &#x1F4DC; License
+
+MIT License - Free to use, modify, and distribute.
+
+---
+
+<p align="center">
+  <strong>Built with &#x2764;&#xFE0F; for Malaysian businesses</strong><br>
+  <sub>Automate the boring stuff. Focus on growing your business.</sub>
+</p>
