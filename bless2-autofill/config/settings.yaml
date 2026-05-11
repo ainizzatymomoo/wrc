@@ -1,0 +1,47 @@
+# ==========================================
+# BLESS2 Auto-Fill Configuration
+# ==========================================
+
+# Base URL for BLESS2 system
+base_url: "https://bless2.bless.gov.my/bless2/private"
+
+# PDF Parser Settings
+ocr_enabled: false          # Enable OCR for scanned PDFs (requires tesseract)
+supported_doc_types:
+  - ssm_profile
+  - certificate_incorporation
+  - form_9
+  - form_24
+  - form_49
+  - annual_return
+
+# Browser Settings
+headless: false             # Run browser without visible window
+timeout: 30                 # Wait timeout in seconds
+implicit_wait: 10           # Implicit wait for elements
+page_load_timeout: 60       # Page load timeout
+slow_mode: true             # Add delays between actions
+slow_mode_delay: 0.5        # Delay in seconds between actions
+keep_browser_open: false    # Keep browser open after filling
+screenshot_on_error: true   # Take screenshots on errors
+screenshot_dir: "./screenshots"
+
+# Retry Settings
+retry_attempts: 3           # Number of retry attempts per field
+retry_delay: 1.0            # Delay between retries in seconds
+
+# Logging
+log_level: "INFO"           # DEBUG, INFO, WARNING, ERROR
+log_file: "./logs/bless2_autofill.log"
+
+# Output
+output_dir: "./output"
+export_json: true           # Export extracted data to JSON
+
+# Field Overrides (use to override/supplement extracted data)
+# Uncomment and fill as needed:
+# field_overrides:
+#   companyName: "YOUR COMPANY SDN BHD"
+#   registrationNo: "202001012345"
+#   phone: "+603-1234 5678"
+#   email: "admin@company.com"
