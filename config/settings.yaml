@@ -1,0 +1,69 @@
+# ==========================================
+# BLESS2 Auto-Fill Configuration
+# ==========================================
+
+# Base URL for BLESS2 system
+base_url: "https://bless2.bless.gov.my/bless2/private"
+
+# PDF Parser Settings
+ocr_enabled: false          # Enable OCR for scanned PDFs (requires tesseract)
+supported_doc_types:
+  - ssm_profile
+  - certificate_incorporation
+  - form_9
+  - form_24
+  - form_49
+  - annual_return
+
+# Browser Settings
+headless: false             # Run browser without visible window
+timeout: 30                 # Wait timeout in seconds
+implicit_wait: 10           # Implicit wait for elements
+page_load_timeout: 60       # Page load timeout
+slow_mode: true             # Add delays between actions
+slow_mode_delay: 0.5        # Delay in seconds between actions
+keep_browser_open: false    # Keep browser open after filling
+screenshot_on_error: true   # Take screenshots on errors
+screenshot_dir: "./screenshots"
+
+# Retry Settings
+retry_attempts: 3           # Number of retry attempts per field
+retry_delay: 1.0            # Delay between retries in seconds
+
+# Logging
+log_level: "INFO"           # DEBUG, INFO, WARNING, ERROR
+log_file: "./logs/bless2_autofill.log"
+
+# Output
+output_dir: "./output"
+export_json: true           # Export extracted data to JSON
+
+# Field Overrides (use to override/supplement extracted data)
+# Uncomment and fill as needed:
+# field_overrides:
+#   companyName: "YOUR COMPANY SDN BHD"
+#   registrationNo: "202001012345"
+#   phone: "+603-1234 5678"
+#   email: "admin@company.com"
+
+# ==========================================
+# AI Configuration (OpenRouter)
+# ==========================================
+# Set OPENROUTER_API_KEY in .env file
+
+# AI Model Selection (see https://openrouter.ai/models)
+ai_model: "openai/gpt-4o-mini"          # Fast & cheap, good for extraction
+ai_fallback_model: "google/gemini-2.0-flash-001"  # Fallback if primary fails
+
+# Alternative models (uncomment to use):
+# ai_model: "openai/gpt-4o"             # Most accurate, higher cost
+# ai_model: "anthropic/claude-3.5-sonnet" # Great at structured data
+# ai_model: "google/gemini-2.0-flash-001" # Fast and cheap
+# ai_model: "meta-llama/llama-3.1-70b-instruct" # Open source, good quality
+
+# AI Behavior
+ai_temperature: 0.1                      # Low = more deterministic/accurate
+ai_max_tokens: 4096                      # Max response length
+ai_confidence_threshold: 0.7             # Min confidence to auto-fill a field
+ai_enable_page_analysis: true            # Analyze page DOM before filling
+ai_enable_error_recovery: true           # Ask AI for fix when errors occur

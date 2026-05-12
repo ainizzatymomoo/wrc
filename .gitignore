@@ -1,0 +1,29 @@
+# Environment
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Output files
+output/
+screenshots/
+logs/
+*.log
+session_data.json
+bless2_session.json
+bless2_results.json
+extracted_data.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PDF documents (may contain sensitive data)
+documents/*.pdf
+input/*.pdf
